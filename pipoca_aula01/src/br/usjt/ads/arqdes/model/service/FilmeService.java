@@ -6,37 +6,64 @@ import java.util.ArrayList;
 import br.usjt.ads.arqdes.model.dao.FilmeDAO;
 import br.usjt.ads.arqdes.model.entity.Filme;
 
-public class FilmeService {
+public class FilmeService 
+{
 	private FilmeDAO dao;
 	
-	public FilmeService() {
+	public FilmeService() 
+	{
 		dao = new FilmeDAO();
 	}
 	
-	public Filme inserirFilme(Filme filme) throws IOException {
+	public Filme inserirFilme(Filme filme) throws IOException 
+	{
 		int id = dao.inserirFilme(filme);
 		filme.setId(id);
 		return filme;
 	}
 	
-	// Busca um filme pelo ID
-	public Filme buscarFilme(int id) throws IOException{
+	public Filme buscarFilme(int id) throws IOException 
+	{
 		return dao.buscarFilme(id);
 	}
-	// Busca Todos os filmes
-	public ArrayList<Filme> buscarFilmes() throws IOException
+	
+	public ArrayList<Filme> listarFilmes(String chave) throws IOException 
+	{
+		return dao.listarFilmes(chave);
+	}
+	
+	public ArrayList<Filme> listarFilmes() throws IOException 
 	{
 		return dao.buscarFilmes();
 	}
-	// Atualiza um filmes
-	public void atualizarFilme(Filme filme) throws IOException
+	
+	public Filme atualizarFilme(Filme filme) throws IOException 
 	{
+		int id = dao.atualizarFilme(filme);
+		filme.setId(id);
 		dao.atualizarFilme(filme);
+		return filme;
 	}
-	// Apaga um filme
-	public void deletarFilme(int id) throws IOException
+
+	public int deletarFilme(int id) throws IOException 
 	{
 		dao.deletarFilme(id);
+		return id;
+	}
+	
+	public ArrayList<Filme> ordenarGeneros() throws IOException 
+	{
+		return dao.ordenarGeneros();
+	}
+	
+	public ArrayList<Filme> ordenarPopularidade() throws IOException 
+	{
+		return dao.ordenarPopularidade();
+	}
+	
+	public ArrayList<Filme> ordenarData() throws IOException 
+	{
+		return dao.ordenarData();
 	}
 
 }

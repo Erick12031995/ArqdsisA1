@@ -8,16 +8,20 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import br.usjt.ads.arqdes.model.entity.Filme;
+import br.usjt.ads.arqdes.model.entity.Genero;
 
-public class FilmeDAO {
+public class FilmeDAO 
+{
 	
-	public int inserirFilme(Filme filme) throws IOException {
+	public int inserirFilme(Filme filme) throws IOException 
+	{
 		int id = -1;
 		String sql = "insert into Filme (titulo, descricao, diretor, posterpath, "
 				+ "popularidade, data_lancamento, id_genero) values (?,?,?,?,?,?,?)";
 		
 		try(Connection conn = ConnectionFactory.getConnection();
-			PreparedStatement pst = conn.prepareStatement(sql);){
+			PreparedStatement pst = conn.prepareStatement(sql);)
+		{
 			
 			pst.setString(1, filme.getTitulo());
 			pst.setString(2, filme.getDescricao());
@@ -31,13 +35,17 @@ public class FilmeDAO {
 			//obter o id criado
 			String query = "select LAST_INSERT_ID()";
 			try(PreparedStatement pst1 = conn.prepareStatement(query);
-				ResultSet rs = pst1.executeQuery();){
+				ResultSet rs = pst1.executeQuery();)
+			{
 
-				if (rs.next()) {
+				if (rs.next()) 
+				{
 					id = rs.getInt(1);
 				}
 			}
-		} catch (SQLException e) {
+		} 
+		catch (SQLException e) 
+		{
 			e.printStackTrace();
 			throw new IOException(e);
 		}
@@ -47,28 +55,36 @@ public class FilmeDAO {
 	// Busca um filme pelo ID
 	// Erick - RA:81523752
 	// Aula01 Exercicios
+	// Atualizacao - Aula 02: Agora retorna o id do item apagado.
 	public Filme buscarFilme(int id) throws IOException
 	{
 		Filme filme = null;
 		
-		String sqlQuery = "select id, titulo, descricao, popularidade, data_lancamento, posterpath, diretor from filme where id=?";
+		// Query Atualizada
+		String sqlQuery = "select f.id, f.titulo, f.descricao, f.diretor, f.posterpath, f.popularidade, f.data_lancamento, f.id_genero, g.nome from filme f, genero g where f.id_genero = g.id and f.id like ?";
 		
 		try(Connection conn = ConnectionFactory.getConnection();
 				PreparedStatement pst = conn.prepareStatement(sqlQuery);)
-		{
+		{	
 			pst.setInt(1, id);
 			try(ResultSet rs = pst.executeQuery();)
 			{
-				if(rs.next())
+				// busca por genero
+				Genero genero;
+				while(rs.next()) 
 				{
 					filme = new Filme();
-					filme.setId(id);
-					filme.setTitulo(rs.getString("titulo"));
-					filme.setDescricao(rs.getString("descricao"));
-					filme.setPopularidade(rs.getDouble("popularidade"));
-					filme.setDataLancamento(rs.getDate("data_lancamento"));
-					filme.setPosterPath(rs.getString("posterpath"));
-					filme.setDiretor(rs.getString("diretor"));
+					filme.setId(rs.getInt("f.id"));
+					filme.setTitulo(rs.getString("f.titulo"));
+					filme.setDescricao(rs.getString("f.descricao"));
+					filme.setDiretor(rs.getString("f.diretor"));
+					filme.setPosterPath(rs.getString("f.posterpath"));
+					filme.setPopularidade(rs.getDouble("f.popularidade"));
+					filme.setDataLancamento(rs.getDate("f.data_lancamento"));
+					genero = new Genero();
+					genero.setId(rs.getInt("f.id_genero"));
+					genero.setNome(rs.getString("g.nome"));
+					filme.setGenero(genero);
 				}
 			}
 		}
@@ -81,6 +97,54 @@ public class FilmeDAO {
 		return filme;
 	}
 	
+	// Busca Filme por chave
+	// Erick - RA: 81523752
+	// Aula02
+	public ArrayList<Filme> listarFilmes(String chave) throws IOException 
+	{
+		ArrayList<Filme> lista = new ArrayList<>();
+		String sqlQuery = "select f.id, f.titulo, f.descricao, f.diretor, f.posterpath, "
+				+ "f.popularidade, f.data_lancamento, f.id_genero, g.nome "
+				+ "from filme f, genero g "
+				+ "where f.id_genero = g.id and upper(f.titulo) like ?";
+		try(Connection conn = ConnectionFactory.getConnection();
+			PreparedStatement pst = conn.prepareStatement(sqlQuery);)
+		{
+			
+			pst.setString(1, "%" + chave.toUpperCase() + "%");
+		
+			try(ResultSet rs = pst.executeQuery();)
+			{
+			
+				Filme filme;
+				Genero genero;
+				while(rs.next()) 
+				{
+					filme = new Filme();
+					filme.setId(rs.getInt("f.id"));
+					filme.setTitulo(rs.getString("f.titulo"));
+					filme.setDescricao(rs.getString("f.descricao"));
+					filme.setDiretor(rs.getString("f.diretor"));
+					filme.setPosterPath(rs.getString("f.posterpath"));
+					filme.setPopularidade(rs.getDouble("f.popularidade"));					
+					filme.setDataLancamento(rs.getDate("f.data_lancamento"));
+					genero = new Genero();
+					genero.setId(rs.getInt("f.id_genero"));
+					genero.setNome(rs.getString("g.nome"));
+					filme.setGenero(genero);
+					lista.add(filme);
+				}
+			}
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+				
+		return lista;
+	}
+
 	// Busca todos os filmes
 	// Erick - RA: 81523752
 	// Aula01 Exercicios
@@ -89,42 +153,51 @@ public class FilmeDAO {
 		Filme filme;
 		ArrayList<Filme> lista = new ArrayList<Filme>();
 		
-		String sqlQuery = "select id_genero, titulo, descricao, diretor, posterpath, popularidade, data_lancamento from filme";
+		//Query Atualizada
+		String sqlQuery = "select f.id, f.titulo, f.descricao, f.diretor, f.posterpath, "
+				+ "f.popularidade, f.data_lancamento, f.id_genero, g.nome "
+				+ "from filme f, genero g "
+				+ "where f.id_genero = g.id";
 		
-		try(Connection conn = ConnectionFactory.getConnection(); 
-				PreparedStatement pst = conn.prepareStatement(sqlQuery) )
-		{	
-			try(ResultSet rs = pst.executeQuery())
-			{
-				while(rs.next())
-				{
-					filme = new Filme();
-					filme.setId(rs.getInt("id"));
-					filme.setTitulo(rs.getString("titulo"));
-					filme.setDescricao(rs.getString("descricao"));
-					filme.setDiretor(rs.getString("diretor"));
-					filme.setPosterPath(rs.getString("posterpath"));
-					filme.setPopularidade(rs.getDouble("popularidade"));
-					filme.setDataLancamento(rs.getDate("data_lancamento"));
-					lista.add(filme);
-				}
-			}
-		}
-		catch (SQLException e ) 
+		try(Connection conn = ConnectionFactory.getConnection();
+				PreparedStatement pst = conn.prepareStatement(sqlQuery);
+				ResultSet rs = pst.executeQuery();)
 		{
-			e.printStackTrace();
-			throw new IOException(e);
-		}
-
+				
+			Genero genero;
+			while(rs.next()) 
+			{
+					filme = new Filme();
+					filme.setId(rs.getInt("f.id"));
+					filme.setTitulo(rs.getString("f.titulo"));
+					filme.setDescricao(rs.getString("f.descricao"));
+					filme.setDiretor(rs.getString("f.diretor"));
+					filme.setPosterPath(rs.getString("f.posterpath"));
+					filme.setPopularidade(rs.getDouble("f.popularidade"));	
+					filme.setDataLancamento(rs.getDate("f.data_lancamento"));
+					genero = new Genero();
+					genero.setId(rs.getInt("f.id_genero"));
+					genero.setNome(rs.getString("g.nome"));
+					filme.setGenero(genero);
+					lista.add(filme);
+			}
+	} 
+	catch (SQLException e) 
+	{
+		e.printStackTrace();
+		throw new IOException(e);
+	}				
 		return lista;
 	}
 	
 	// Atualiza um filme
 	// Erick - RA: 81523752
 	// Aula01 Exercicios
-	public void atualizarFilme(Filme filme) throws IOException
+	// Atualizacao - Aula 02: Agora retorna o id do item Atualizado para uma futura busca por id.
+	public int atualizarFilme(Filme filme) throws IOException
 	{
-		String sqlQuery = "update filme set titulo=?, descricao=?, diretor=?, posterpath=?, popularidade=?, data_lancamento=? where id_genero=?";
+		int id = -1;
+		String sqlQuery = "update Filme set titulo=?, descricao=?, diretor=?, posterpath=?, popularidade=?, data_lancamento=?, id_genero=? where id=?";
 		
 		try(Connection conn = ConnectionFactory.getConnection();
 				PreparedStatement pst = conn.prepareStatement(sqlQuery))
@@ -134,23 +207,46 @@ public class FilmeDAO {
 			pst.setString(3, filme.getDiretor());
 			pst.setString(4, filme.getPosterPath());
 			pst.setDouble(5, filme.getPopularidade());
-			pst.setDate(6, new java.sql.Date(filme.getDataLancamento().getTime()));
-			pst.setInt(7, filme.getId());
+			if (filme.getDataLancamento() != null) 
+			{
+				pst.setDate(6, new java.sql.Date(filme.getDataLancamento().getTime()));
+
+			} 
+			else 
+			{
+				pst.setDate(6, null);
+			}
+			pst.setInt(7, filme.getGenero().getId());
+			pst.setInt(8, filme.getId());
+
 			pst.execute();
+
+			// obter o id do update
+			String query = "select LAST_INSERT_ID()";
+			try (PreparedStatement pst1 = conn.prepareStatement(query); ResultSet rs = pst1.executeQuery();) 
+			{
+
+				if (rs.next()) 
+				{
+					id = rs.getInt(1);
+				}
+			}
 		}
 		catch(SQLException e)
 		{
 			e.printStackTrace();
 			throw new IOException(e);
 		}
+		return id;
 	}
 	
 	// Deleta um filme
 	// Erick - RA: 81523752
 	// Aula01 Exercicios
-	public void deletarFilme(int id) throws IOException
+	// Atualizacao - Aula 02: Agora retorna o id do item apagado.
+	public int deletarFilme(int id) throws IOException
 	{
-		String sqlQuery = "DELETE FROM filme WHERE id_genero = ?";
+		String sqlQuery = "DELETE FROM filme WHERE id = ?";
 		try(Connection conn = ConnectionFactory.getConnection();
 				PreparedStatement pst = conn.prepareStatement(sqlQuery))
 		{
@@ -162,6 +258,130 @@ public class FilmeDAO {
 			e.printStackTrace();
 			throw new IOException();	
 		}
+		return id;
 	}
+	
+	
+	// -------------- Implementacoes Aula 02 -----------------
+	
+	// Ordena filmes por genero
+	public ArrayList<Filme> ordenarGeneros() throws IOException 
+	{
+		ArrayList<Filme> lista = new ArrayList<>();
+		String sql = "select f.id, f.titulo, f.descricao, f.diretor, f.posterpath, "
+				+ "f.popularidade, f.data_lancamento, f.id_genero, g.nome "
+				+ "from filme f, genero g "
+				+ "where f.id_genero = g.id order by g.nome";
+		try(Connection conn = ConnectionFactory.getConnection();
+			PreparedStatement pst = conn.prepareStatement(sql);
+			ResultSet rs = pst.executeQuery();)
+		{
+			
+			Filme filme;
+			Genero genero;
+			while(rs.next()) 
+			{
+				filme = new Filme();
+				filme.setId(rs.getInt("f.id"));
+				filme.setTitulo(rs.getString("f.titulo"));
+				filme.setDescricao(rs.getString("f.descricao"));
+				filme.setDiretor(rs.getString("f.diretor"));
+				filme.setPosterPath(rs.getString("f.posterpath"));
+				filme.setPopularidade(rs.getDouble("f.popularidade"));	
+				filme.setDataLancamento(rs.getDate("f.data_lancamento"));
+				genero = new Genero();
+				genero.setId(rs.getInt("f.id_genero"));
+				genero.setNome(rs.getString("g.nome"));
+				filme.setGenero(genero);
+				lista.add(filme);
+			}
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+			throw new IOException(e);
+		}				
+		return lista;
+	}
+	
+	// ordena filmes por popularidade
+	public ArrayList<Filme> ordenarPopularidade() throws IOException 
+	{
+		ArrayList<Filme> lista = new ArrayList<>();
+		String sql = "select f.id, f.titulo, f.descricao, f.diretor, f.posterpath, "
+				+ "f.popularidade, f.data_lancamento, f.id_genero, g.nome "
+				+ "from filme f, genero g "
+				+ "where f.id_genero = g.id order by f.popularidade desc";
+		try(Connection conn = ConnectionFactory.getConnection();
+			PreparedStatement pst = conn.prepareStatement(sql);
+			ResultSet rs = pst.executeQuery();)
+		{
+			
+			Filme filme;
+			Genero genero;
+			while(rs.next()) 
+			{
+				filme = new Filme();
+				filme.setId(rs.getInt("f.id"));
+				filme.setTitulo(rs.getString("f.titulo"));
+				filme.setDescricao(rs.getString("f.descricao"));
+				filme.setDiretor(rs.getString("f.diretor"));
+				filme.setPosterPath(rs.getString("f.posterpath"));
+				filme.setPopularidade(rs.getDouble("f.popularidade"));	
+				filme.setDataLancamento(rs.getDate("f.data_lancamento"));
+				genero = new Genero();
+				genero.setId(rs.getInt("f.id_genero"));
+				genero.setNome(rs.getString("g.nome"));
+				filme.setGenero(genero);
+				lista.add(filme);
+			}
+		}
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+			throw new IOException(e);
+		}				
+		return lista;
+	}
+	// Ordena Filmes por data
+	public ArrayList<Filme> ordenarData() throws IOException 
+	{
+		ArrayList<Filme> lista = new ArrayList<>();
+		String sql = "select f.id, f.titulo, f.descricao, f.diretor, f.posterpath, "
+				+ "f.popularidade, f.data_lancamento, f.id_genero, g.nome "
+				+ "from filme f, genero g "
+				+ "where f.id_genero = g.id order by f.data_lancamento desc";
+		try(Connection conn = ConnectionFactory.getConnection();
+			PreparedStatement pst = conn.prepareStatement(sql);
+			ResultSet rs = pst.executeQuery();)
+		{
+			
+			Filme filme;
+			Genero genero;
+			while(rs.next())
+			{
+				filme = new Filme();
+				filme.setId(rs.getInt("f.id"));
+				filme.setTitulo(rs.getString("f.titulo"));
+				filme.setDescricao(rs.getString("f.descricao"));
+				filme.setDiretor(rs.getString("f.diretor"));
+				filme.setPosterPath(rs.getString("f.posterpath"));
+				filme.setPopularidade(rs.getDouble("f.popularidade"));	
+				filme.setDataLancamento(rs.getDate("f.data_lancamento"));
+				genero = new Genero();
+				genero.setId(rs.getInt("f.id_genero"));
+				genero.setNome(rs.getString("g.nome"));
+				filme.setGenero(genero);
+				lista.add(filme);
+			}
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+			throw new IOException(e);
+		}				
+		return lista;
+	}
+
 
 }
